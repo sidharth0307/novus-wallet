@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String  @id @default(uuid())
+  email     String  @unique
+  password  String
+  cashtag   String   @unique
+  role      UserRole  @default(FREE)
+  wallet    Wallet?
+  stripeAccountId String?   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([cashtag])
+}
+
+enum UserRole {
+  FREE
+  PRO
+  ADMIN
+}
+
+model Wallet {
+  id       String @id @default(uuid())
+  balance  Int  @default(0)
+
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id])
+
+  ledgerEntries LedgerEntry[]
+
+  transactionsFrom Transaction[] @relation("FromWallet")
+  transactionsTo   Transaction[] @relation("ToWallet")
+}
+
+model Transaction {
+  @@index([fromWalletId])
+  @@index([toWalletId])
+  @@index([createdAt])
+
+  id          String   @id @default(uuid())
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+
+  amount      Int
+  currency    String   @default("USD")
+
+  stripeSessionId String? @unique
+  stripePaymentIntentId String?
+
+  idempotencyKey        String? @unique
+
+  fromWallet  Wallet?  @relation("FromWallet", fields: [fromWalletId], references: [id])
+  fromWalletId String?
+
+  toWallet    Wallet?  @relation("ToWallet", fields: [toWalletId], references: [id])
+  toWalletId   String?
+
+  claimToken            String?   @unique 
+  recipientEmail        String?
+
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries      LedgerEntry[]
+  expiresAt   DateTime?
+}
+
+enum TransactionType {
+  TRANSFER
+  DEPOSIT
+  WITHDRAW
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  PENDING_CLAIM
+  CANCELLED 
+  EXPIRED
+}
+
+model WebhookEvent {
+  id              String   @id @default(uuid())
+  providerEventId String   @unique
+  createdAt       DateTime @default(now())
+}
+
+enum EntryType {
+  CREDIT
+  DEBIT
+}
+
+model LedgerEntry {
+  id            String      @id @default(uuid())
+  amount        Int         // Always a positive integer. The type dictates if it's math +/-
+  type          EntryType
+  
+  // Relations
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  
+  walletId      String
+  wallet        Wallet      @relation(fields: [walletId], references: [id])
+  
+  createdAt     DateTime    @default(now())
+
+  // Indexes are crucial here because we will be summing these rows often
+  @@index([walletId])
+  @@index([transactionId])
+}

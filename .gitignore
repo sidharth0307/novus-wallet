@@ -1,0 +1,13 @@
+# Dependency directories
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Environment variables (CRITICAL)
+.env
+.env.local
+.env.*
