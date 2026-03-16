@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@wallet/schemas": ["../packages/schemas/src"] 
+    },
     "target": "ES2020",
     "module": "CommonJS",
     "moduleResolution": "node",
