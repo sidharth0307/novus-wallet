@@ -53,6 +53,7 @@ EMAIL_USER="your-email@gmail.com"
 EMAIL_APP_PASSWORD="your-16-character-app-password"
 
 # Server
+PORT=5000
 FRONTEND_URL="http://localhost:3000"
 
 **Frontend (`apps/web/.env.local`):**
