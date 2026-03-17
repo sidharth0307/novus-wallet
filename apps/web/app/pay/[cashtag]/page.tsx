@@ -24,7 +24,6 @@ export default function PublicPaymentPage() {
     const fetchRecipient = async () => {
      const token = localStorage.getItem("token");
       
-      // FIX: If no token, don't even call the API. Just show Login screen.
       if (!token) {
         setIsLoggedOut(true);
         setIsValidating(false);
