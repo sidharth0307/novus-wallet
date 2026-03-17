@@ -9,7 +9,7 @@ const router = express.Router();
 // --- DATA FETCHING (Uses generous 60/min limit) ---
 router.get("/balance", auth, rateLimit, balance);
 router.get("/transactions", auth, rateLimit, transactions);
-router.get("/lookup/:cashtag", rateLimit, lookupCashtag);
+router.get("/lookup/:cashtag", auth, rateLimit, lookupCashtag);
 
 // --- FINANCIAL ACTIONS (Uses strict 10/min limit) ---
 router.post("/transfer", auth, strictRateLimit, validate(transferSchema), transfer);
