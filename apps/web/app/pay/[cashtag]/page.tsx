@@ -16,18 +16,23 @@ export default function PublicPaymentPage() {
   
   const [isValidating, setIsValidating] = useState(true);
   const [recipient, setRecipient] = useState<any>(null);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
 
   useEffect(() => {
    if (!cashtag || cashtag === "undefined") return;
 
     const fetchRecipient = async () => {
       setIsValidating(true);
+      setIsUnauthorized(false);
       
       try {
         const data = await api(`/wallet/lookup/${cashtag}`);
         setRecipient(data.user);
-      } catch (err) {
+      } catch (err: any) {
         setRecipient(null); 
+        if (err.status === 401 || err.message?.includes("401")) {
+        setIsUnauthorized(true);
+      }
       } finally {
         setIsValidating(false);
       }
@@ -76,6 +81,26 @@ export default function PublicPaymentPage() {
 
   if (isValidating) {
     return <div className="min-h-screen flex items-center justify-center bg-[#F6F9FC]">Loading...</div>;
+  }
+
+  if (isUnauthorized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F6F9FC] text-center p-4">
+        <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+          <svg className="w-8 h-8 text-[#635BFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold text-slate-800 mb-2">Login Required</h1>
+        <p className="text-slate-500 mb-6">Please log in to verify the recipient and send money to <strong>${cashtag}</strong>.</p>
+        <button 
+          onClick={() => router.push(`/login?redirect=/pay/${cashtag}`)} 
+          className="bg-[#635BFF] text-white px-8 py-3 rounded-xl font-semibold hover:bg-[#4B45C6] transition-all shadow-lg"
+        >
+          Log In to Continue
+        </button>
+      </div>
+    );
   }
 
   if (!recipient) {
