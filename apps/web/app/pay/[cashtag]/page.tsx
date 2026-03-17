@@ -18,7 +18,11 @@ export default function PublicPaymentPage() {
   const [recipient, setRecipient] = useState<any>(null);
 
   useEffect(() => {
+   if (!cashtag || cashtag === "undefined") return;
+
     const fetchRecipient = async () => {
+      setIsValidating(true);
+      
       try {
         const data = await api(`/users/lookup/${cashtag}`);
         setRecipient(data.user);

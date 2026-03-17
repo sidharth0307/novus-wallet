@@ -349,11 +349,7 @@ export const claimEscrowFunds = async (userId: string, claimToken: string) => {
 export const getUserByCashtag = async (cashtag: string) => {
   if (!cashtag) throw new Error("Cashtag is required");
 
-  let formattedCashtag = cashtag.toLowerCase().replace(/[^a-z0-9$]/g, "");
-
-  if (!formattedCashtag.startsWith("$")) {
-    formattedCashtag = "$" + formattedCashtag;
-  }
+  const formattedCashtag = cashtag.toLowerCase().replace(/[^a-z0-9]/g, "");
 
   const user = await prisma.user.findUnique({
     where: { cashtag: formattedCashtag },
