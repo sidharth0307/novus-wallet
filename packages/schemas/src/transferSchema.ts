@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const transferSchema = z.object({
-  email: z.string(),
+  receiverIdentifier: z.string().min(1, "Recipient is required"),
   amount: z.number().positive(),
   description: z.string().optional(),
   idempotencyKey: z.string(),

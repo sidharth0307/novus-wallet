@@ -59,7 +59,7 @@ export default function PublicPaymentPage() {
       await api("/wallet/transfer", {
         method: "POST",
         body: JSON.stringify({
-          cashtag: cashtag, // Sending Cashtag instead of Email
+          receiverIdentifier: cashtag, 
           amount: amountInCents,
           description,
           idempotencyKey,

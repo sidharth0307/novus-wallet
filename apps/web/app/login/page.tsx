@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
@@ -11,6 +11,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
+  
+  const redirectTo = searchParams.get("redirect");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +40,11 @@ export default function LoginPage() {
         toast.success("Welcome! Redirecting to your funds...", { id: toastId });
 
         router.push(`/claim/${pendingClaimToken}`);
+      } else if (redirectTo) {
+        toast.success("Logged in! Let's finish that payment.", { id: toastId });
+        router.push(redirectTo); 
       } else {
-        toast.success("Welcome back!", { id: toastId });
+        toast.success("Welcome!", { id: toastId });
         router.push("/dashboard");
       }
       
