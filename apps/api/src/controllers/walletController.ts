@@ -9,12 +9,10 @@ export const transfer = async (req: Request, res: Response) => {
   if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    const { email, cashtag, amount, description, idempotencyKey } = req.body;
-    
-    const receiverIdentifier = email || cashtag;
+    const { receiverIdentifier, amount, description, idempotencyKey } = req.body;
 
     if (!receiverIdentifier) {
-      return res.status(400).json({ message: "Missing receiver email or cashtag" });
+      return res.status(400).json({ message: "Recipient identifier is required" });
     }
 
     const tx = await transferMoney(
