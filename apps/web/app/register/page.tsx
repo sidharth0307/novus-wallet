@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
-export default function RegisterPage() {
+ function RegisterContent
+ () {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const redirectTo = useSearchParams().get("redirect");
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,12 +40,13 @@ export default function RegisterPage() {
       
       if (pendingClaimToken) {
         toast.success("Account created! Log in to claim your funds.", { id: toastId });
-        router.push("/login");
       } else {
         toast.success("Account created! Please sign in.", { id: toastId });
-        router.push("/login");
       }
 
+      const loginUrl = `/login${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`;
+      
+      router.push(loginUrl);
     } catch (err: any) {
       toast.error(err.message || "Failed to create account.", { id: toastId });
       setLoading(false);
@@ -137,5 +141,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <RegisterContent />
+    </Suspense>
   );
 }

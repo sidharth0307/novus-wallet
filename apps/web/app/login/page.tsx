@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "../lib/api";
 import toast from "react-hot-toast";
 
-export default function LoginPage() {
+ function LoginContent() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -133,12 +133,23 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-slate-500 mt-8 font-medium">
             Don't have an account?{" "}
-            <Link href="/register" className="text-[#635BFF] hover:text-[#4B45C6] font-bold transition-colors">
+            <Link 
+              href={`/register${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} 
+              className="text-[#635BFF] hover:text-[#4B45C6] font-bold transition-colors"
+            >
               Create one
             </Link>
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
