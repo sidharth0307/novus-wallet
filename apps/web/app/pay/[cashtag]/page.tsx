@@ -24,7 +24,7 @@ export default function PublicPaymentPage() {
       setIsValidating(true);
       
       try {
-        const data = await api(`/users/lookup/${cashtag}`);
+        const data = await api(`/wallet/lookup/${cashtag}`);
         setRecipient(data.user);
       } catch (err) {
         setRecipient(null); 
