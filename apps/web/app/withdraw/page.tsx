@@ -41,7 +41,8 @@ export default function WithdrawPage() {
 
     } catch (err: any) {
       // Catch the specific missing account error from the backend
-      if (err.message === "STRIPE_ACCOUNT_MISSING") {
+      if (err.message === "STRIPE_ACCOUNT_MISSING"|| 
+        err.message === "STRIPE_ACCOUNT_INCOMPLETE") {
         toast.dismiss(toastId);
         setNeedsOnboarding(true);
       } else {

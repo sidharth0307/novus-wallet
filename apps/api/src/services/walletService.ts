@@ -227,6 +227,11 @@ export const withdrawMoney = async (
   }
   const stripeAccountId = user.stripeAccountId;
 
+  const stripeAccount = await stripe.accounts.retrieve(stripeAccountId);
+  if (!stripeAccount.details_submitted) {
+    throw new Error("STRIPE_ONBOARDING_INCOMPLETE");
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     // Idempotency check to prevent double-withdrawals
     if (idempotencyKey) {
@@ -344,7 +349,11 @@ export const claimEscrowFunds = async (userId: string, claimToken: string) => {
 export const getUserByCashtag = async (cashtag: string) => {
   if (!cashtag) throw new Error("Cashtag is required");
 
-  const formattedCashtag = cashtag.toLowerCase().replace(/[^a-z0-9]/g, "");
+  let formattedCashtag = cashtag.toLowerCase().replace(/[^a-z0-9$]/g, "");
+
+  if (!formattedCashtag.startsWith("$")) {
+    formattedCashtag = "$" + formattedCashtag;
+  }
 
   const user = await prisma.user.findUnique({
     where: { cashtag: formattedCashtag },
