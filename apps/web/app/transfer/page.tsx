@@ -37,7 +37,7 @@ export default function TransferPage() {
       await api("/wallet/transfer", {
         method: "POST",
         body: JSON.stringify({
-          email: recipient,
+          receiverIdentifier: recipient,
           amount: amountInCents,
          description: description,
           idempotencyKey: idempotencyKey,

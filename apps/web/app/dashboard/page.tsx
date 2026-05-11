@@ -113,17 +113,29 @@ export default function DashboardPage() {
     return `Expires in ${hours}h`;
   };
 
-  const renderTransactionTitle = (tx: Transaction) => {
-    if (tx.type === "DEPOSIT") return "Stripe Deposit";
-    if (tx.type === "WITHDRAW") return "Bank Withdrawal";
-    if (tx.type === "TRANSFER") {
-      const otherUser = tx.direction === "OUT" ? tx.toUser : tx.fromUser;
-      // Show cashtag if available, otherwise fallback to email
-      const identifier = otherUser?.cashtag ? `$${otherUser.cashtag}` : otherUser?.email;
-      return `Transfer ${tx.direction === "OUT" ? 'to' : 'from'} ${identifier}`;
+  const renderTransactionTitle = (tx: any) => {
+  if (tx.type === "DEPOSIT") return "Stripe Deposit";
+  if (tx.type === "WITHDRAW") return "Bank Withdrawal";
+
+  if (tx.type === "TRANSFER") {
+    // 1. Handle Outbound Escrow (Branch B)
+    if (tx.direction === "OUT" && tx.status === "PENDING_CLAIM") {
+      return `Transfer to ${tx.recipientEmail}`;
     }
-    return tx.type;
-  };
+
+    // 2. Handle standard transfers
+    const otherUser = tx.direction === "OUT" ? tx.toUser : tx.fromUser;
+    
+    // Fallback chain: Cashtag -> Email -> "Unknown"
+    const identifier = otherUser?.cashtag 
+      ? `$${otherUser.cashtag}` 
+      : (otherUser?.email || "Unknown User");
+
+    return `Transfer ${tx.direction === "OUT" ? 'to' : 'from'} ${identifier}`;
+  }
+
+  return tx.type;
+};
 
   const handleConfirmCancel = async (txId: string) => {
     setIsCancelling(true);
@@ -302,7 +314,7 @@ export default function DashboardPage() {
                         {/* Expiration Countdown */}
                         {tx.expiresAt && (
                           <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-md mb-2 border border-amber-100 whitespace-nowrap">
-                            ⏳ {getTimeRemaining(tx.expiresAt)}
+                           {getTimeRemaining(tx.expiresAt)}
                           </span>
                         )}
                         
