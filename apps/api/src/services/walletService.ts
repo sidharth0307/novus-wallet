@@ -199,6 +199,8 @@ export const getTx = async (
       description: tx.description,
       createdAt: tx.createdAt,
       direction,
+      recipientEmail: tx.recipientEmail, 
+      expiresAt: tx.expiresAt,
       fromUser: tx.fromWallet?.user
         ? { id: tx.fromWallet.user.id, email: tx.fromWallet.user.email }
         : null,

@@ -11,25 +11,31 @@ const withTimeout = (promise: Promise<any>, ms: number = 1000) => {
 
 export const rateLimit = async (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-  
-  const { userId, role } = req.user;
-  const limit = role === "PRO" ? 300 : 60; 
-  const key = `rate:${userId}`;
 
   try {
-    // 1. use a pipeline or multi to ensure atomic operations
-    // 2. wrap in a timeout so an inactive Upstash DB doesn't stall the request
-    const [count] = await withTimeout(
-      redis.pipeline().incr(key).expire(key, 60).exec()
-    );
+    // We call Redis, but immediately catch any low-level network/fetch errors
+    const result = await redis.pipeline()
+      .incr(`rate:${req.user.userId}`)
+      .expire(`rate:${req.user.userId}`, 60)
+      .exec()
+      .catch((err: any) => {
+        console.error("Redis Network Failure (Ignoring):", err.message);
+        return null; // Return null so the next line handles it
+      });
+
+    // If Redis failed or timed out, just let them through
+    if (!result || !Array.isArray(result)) return next();
+
+    const [count] = result;
+    const limit = req.user.role === "PRO" ? 300 : 60;
 
     if (count > limit) {
-      return res.status(429).json({ message: "Too many requests. Please slow down." });
+      return res.status(429).json({ message: "Too many requests." });
     }
+
     next();
   } catch (error) {
-    // FAIL OPEN: Log the error, but let the user see their balance/profile
-    console.error("Redis Rate Limiter Error (Bypassing):", error);
+    // Ultimate fallback
     next();
   }
 };
