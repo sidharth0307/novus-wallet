@@ -28,9 +28,11 @@ export default function WithdrawPage() {
     try {
       const amountInCents = Math.round(numericAmount * 100);
 
+      const idempotencyKey = crypto.randomUUID();
+
       await api("/wallet/withdraw", {
         method: "POST",
-        body: JSON.stringify({ amount: amountInCents }),
+        body: JSON.stringify({ amount: amountInCents, idempotencyKey: idempotencyKey }),
       });
 
       toast.success("Withdrawal initiated successfully", { id: toastId });

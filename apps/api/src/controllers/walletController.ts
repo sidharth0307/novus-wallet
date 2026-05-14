@@ -60,12 +60,13 @@ export const withdraw = async (req: Request, res: Response) => {
   if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    const { amount } = req.body;
+    const { amount, idempotencyKey } = req.body;
 
-    const tx = await withdrawMoney(req.user.userId, Number(amount));
+    const tx = await withdrawMoney(req.user.userId, Number(amount), idempotencyKey);
     
     res.json(tx);
   } catch (err: any) {
+    console.error("Withdrawal Controller Error:", err.message);
     res.status(400).json({ message: err.message || "Withdrawal failed" });
   }
 };
@@ -147,12 +148,20 @@ export const cancelTransfer = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Valid transaction ID is required" });
     }
     const refundedTx = await processRefund(id, "CANCELLED", req.user.userId);
-    if (typeof redis !== 'undefined') {
-      await redis.del(`wallet:${req.user.userId}`);
-      await redis.del(`tx:${req.user.userId}`);
+
+   try {
+      if (typeof redis !== 'undefined') {
+        await redis.del(`wallet:${req.user.userId}`);
+        await redis.del(`tx:${req.user.userId}`);
+      }
+    } catch (redisErr) {
+      console.error("[Non-Fatal] Redis cache clear failed during cancel:", redisErr);
     }
+
+    // 3. Success response is guaranteed
     res.json({ message: "Transfer cancelled and refunded", transaction: refundedTx });
   } catch (err: any) {
+    console.error(" CRITICAL CANCEL ERROR:", err);
     res.status(400).json({ message: err.message || "Failed to cancel transfer" });
   }
 };

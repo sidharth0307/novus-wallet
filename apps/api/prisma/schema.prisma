@@ -18,6 +18,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([cashtag])
+  isVerified   Boolean   @default(false)
+  otpCode      String?   
+  otpExpiresAt DateTime?
 }
 
 enum UserRole {

@@ -9,4 +9,5 @@ export const transferSchema = z.object({
 
 export const withdrawSchema = z.object({
   amount: z.number().positive("Withdrawal amount must be greater than 0"),
+  idempotencyKey: z.string(),
 });

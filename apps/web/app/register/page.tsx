@@ -12,6 +12,8 @@ import toast from "react-hot-toast";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"register" | "otp">("register");
+  const [otp, setOtp] = useState("");
 
   const redirectTo = useSearchParams().get("redirect");
 
@@ -28,58 +30,91 @@ import toast from "react-hot-toast";
     }
 
     setLoading(true);
-    const toastId = toast.loading("Creating your secure ledger...");
+    const toastId = toast.loading("Sending verification code...");
 
     try {
-      await api("/auth/register", {
+      const response = await api("/auth/register", {
         method: "POST",
         body: JSON.stringify({ email, password }),
+      });
+
+      toast.success(response?.message || "OTP sent to your email!", { id: toastId });
+      
+      setStep("otp"); 
+
+    } catch (err: any) {
+      toast.error(err.message || "Registration failed.", { id: toastId });
+    } finally {
+      setLoading(false); 
+    }
+};
+
+const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length !== 6) {
+      toast.error("Please enter the 6-digit code.");
+      return;
+    }
+
+    setLoading(true);
+    const toastId = toast.loading("Verifying your email...");
+
+    try {
+      await api("/auth/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ email, otp }),
       });
 
       const pendingClaimToken = sessionStorage.getItem("pendingClaimToken");
       
       if (pendingClaimToken) {
-        toast.success("Account created! Log in to claim your funds.", { id: toastId });
+        toast.success("Verified! Log in to claim your funds.", { id: toastId });
       } else {
-        toast.success("Account created! Please sign in.", { id: toastId });
+        toast.success("Verified! Please sign in.", { id: toastId });
       }
 
+      // Finally, send them to login!
       const loginUrl = `/login${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`;
-      
       router.push(loginUrl);
+
     } catch (err: any) {
-      toast.error(err.message || "Failed to create account.", { id: toastId });
+      toast.error(err.message || "Invalid or expired OTP.", { id: toastId });
+    } finally {
       setLoading(false);
     }
-  };
+};
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-[#F6F9FC] relative overflow-hidden flex items-center justify-center p-4 font-sans">
-      
-      {/* Decorative Background Mesh */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] opacity-30 pointer-events-none hidden sm:block">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-300 to-emerald-200 blur-[120px] rounded-full mix-blend-multiply" />
-      </div>
+  <div className="min-h-[calc(100vh-64px)] bg-[#F6F9FC] relative overflow-hidden flex items-center justify-center p-4 font-sans">
+    
+    {/* Decorative Background Mesh */}
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] opacity-30 pointer-events-none hidden sm:block">
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-300 to-emerald-200 blur-[120px] rounded-full mix-blend-multiply" />
+    </div>
 
-      <div className="w-full max-w-md relative z-10 animate-fadeIn">
-        <div className="bg-white/80 backdrop-blur-xl border border-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 sm:p-10">
-          
-          {/* Logo & Header */}
-          <div className="flex flex-col items-center text-center mb-10">
-            <div className="w-14 h-14 bg-[#635BFF] rounded-2xl flex items-center justify-center shadow-md shadow-indigo-500/20 mb-6">
-              <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">
-              Create your account
-            </h1>
-            <p className="text-sm text-slate-500 font-medium px-4">
-              Join Novus and experience the future of programmable money.
-            </p>
+    <div className="w-full max-w-md relative z-10 animate-fadeIn">
+      <div className="bg-white/80 backdrop-blur-xl border border-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 sm:p-10">
+        
+        {/* Dynamic Logo & Header */}
+        <div className="flex flex-col items-center text-center mb-10">
+          <div className="w-14 h-14 bg-[#635BFF] rounded-2xl flex items-center justify-center shadow-md shadow-indigo-500/20 mb-6">
+            <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
           </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">
+            {step === "register" ? "Create your account" : "Check your email"}
+          </h1>
+          <p className="text-sm text-slate-500 font-medium px-4">
+            {step === "register" 
+              ? "Join Novus and experience the future of programmable money." 
+              : `We sent a 6-digit secure code to ${email}.`}
+          </p>
+        </div>
 
-          <form onSubmit={handleRegister} className="space-y-5">
+        {/* Conditional Form Rendering */}
+        {step === "register" ? (
+          <form onSubmit={handleRegister} className="space-y-5 animate-fadeIn">
             {/* Email Input */}
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -131,17 +166,67 @@ import toast from "react-hot-toast";
               )}
             </button>
           </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp} className="space-y-5 animate-fadeIn">
+            {/* OTP Input */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-slate-400 group-focus-within:text-[#635BFF] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Enter OTP code"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} // Strips non-numbers
+                disabled={loading}
+                maxLength={6}
+                className="block w-full pl-12 pr-4 py-4 bg-slate-50 border-transparent rounded-2xl text-center tracking-[0.5em] text-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#635BFF]/20 focus:bg-white focus:border-[#635BFF]/20 transition-all placeholder-slate-400 hover:bg-slate-100 disabled:opacity-50"
+                required
+              />
+            </div>
 
-          <p className="text-center text-sm text-slate-500 mt-8 font-medium">
+            <button
+              type="submit"
+              disabled={loading || otp.length !== 6}
+              className="w-full bg-[#635BFF] hover:bg-[#4B45C6] text-white text-base font-semibold py-4 rounded-2xl transition-all shadow-lg shadow-indigo-500/25 mt-2 flex justify-center items-center disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              ) : (
+                "Verify & Continue"
+              )}
+            </button>
+            
+            {/* Back to register button */}
+            <button
+              type="button"
+              onClick={() => setStep("register")}
+              disabled={loading}
+              className="w-full text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors mt-2"
+            >
+              Entered the wrong email? Go back.
+            </button>
+          </form>
+        )}
+
+        {/* Footer Link */}
+        {step === "register" && (
+          <p className="text-center text-sm text-slate-500 mt-8 font-medium animate-fadeIn">
             Already have an account?{" "}
             <Link href="/login" className="text-[#635BFF] hover:text-[#4B45C6] font-bold transition-colors">
               Sign in
             </Link>
           </p>
-        </div>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 export default function RegisterPage() {

@@ -128,20 +128,29 @@ export const transferMoney = async (
   });
 
   // Delete caches (Using the safely scoped receiverUserId)
-  const keys = [`wallet:${fromUserId}`, `tx:${fromUserId}`];
-  if (result.status === "SUCCESS" && receiverUserId) {
-    keys.push(`wallet:${receiverUserId}`, `tx:${receiverUserId}`);
+  try {
+    const keys = [`wallet:${fromUserId}`, `tx:${fromUserId}`];
+    if (result.status === "SUCCESS" && receiverUserId) {
+      keys.push(`wallet:${receiverUserId}`, `tx:${receiverUserId}`);
+    }
+    if (typeof redis !== 'undefined') {
+      // Don't let a cache deletion crash a successful money transfer!
+      await redis.del(...keys).catch(err => console.error("Redis del failed:", err.message));
+    }
+  } catch (error) {
+    console.error("Cache cleanup skipped due to error");
   }
-  if (typeof redis !== 'undefined') await redis.del(...keys);
 
-  // Trigger Escrow Email
-  if (result.status === "PENDING_CLAIM" && result.recipientEmail && result.claimToken) {
-    sendClaimEmail(result.recipientEmail, amount, result.claimToken).catch(err => {
-      console.error("Non-fatal email error:", err);
-    });
+  // 2. Safely attempt to send email
+  try {
+    if (result.status === "PENDING_CLAIM" && result.recipientEmail && result.claimToken) {
+      await sendClaimEmail(result.recipientEmail, amount, result.claimToken);
+    }
+  } catch (emailErr) {
+    console.error("Email failed to send, but transfer succeeded:", emailErr);
   }
 
-  return result;
+  return result; // Finally returns successfully to the controller
 };
 
 export const getWalletBalance = async (userId: string) => {
@@ -289,8 +298,14 @@ export const withdrawMoney = async (
     });
   });
 
-  const keys = [`wallet:${userId}`, `tx:${userId}`];
-  if (typeof redis !== 'undefined') await redis.del(...keys);
+ try {
+    if (typeof redis !== 'undefined') {
+      const keys = [`wallet:${userId}`, `tx:${userId}`];
+      await redis.del(...keys).catch(err => console.error("Redis Del Error:", err.message));
+    }
+  } catch (err) {
+    console.error("Non-fatal cache cleanup error:", err);
+  }
 
   return result;
 };

@@ -118,18 +118,21 @@ export default function DashboardPage() {
   if (tx.type === "WITHDRAW") return "Bank Withdrawal";
 
   if (tx.type === "TRANSFER") {
-    // 1. Handle Outbound Escrow (Branch B)
-    if (tx.direction === "OUT" && tx.status === "PENDING_CLAIM") {
-      return `Transfer to ${tx.recipientEmail}`;
-    }
-
-    // 2. Handle standard transfers
     const otherUser = tx.direction === "OUT" ? tx.toUser : tx.fromUser;
     
-    // Fallback chain: Cashtag -> Email -> "Unknown"
-    const identifier = otherUser?.cashtag 
-      ? `$${otherUser.cashtag}` 
-      : (otherUser?.email || "Unknown User");
+    let identifier = "Unknown User";
+
+    if (tx.direction === "OUT") {
+      // OUTBOUND PRIORITY: Cashtag -> Registered Email -> Escrow Email -> Unknown
+      identifier = otherUser?.cashtag 
+        ? `$${otherUser.cashtag}` 
+        : (otherUser?.email || tx.recipientEmail || "Unknown User");
+    } else {
+      // INBOUND PRIORITY: Cashtag -> Registered Email -> Unknown
+      identifier = otherUser?.cashtag 
+        ? `$${otherUser.cashtag}` 
+        : (otherUser?.email || "Unknown User");
+    }
 
     return `Transfer ${tx.direction === "OUT" ? 'to' : 'from'} ${identifier}`;
   }

@@ -30,8 +30,8 @@ export const createConnectedAccount = async (userId: string, email: string) => {
 export const getAccountLink = async (accountId: string) => {
   const accountLink = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: "http://localhost:3000/withdraw", // If they click back/refresh
-    return_url: "http://localhost:3000/withdraw?setup=success", // Where they go after finishing
+    refresh_url: `${process.env.FRONTEND_URL}/withdraw`, // If they click back/refresh
+    return_url: `${process.env.FRONTEND_URL}/withdraw?setup=success`, // Where they go after finishing
     type: "account_onboarding",
   });
 
