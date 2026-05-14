@@ -1,61 +1,51 @@
-import dns from "node:dns";
-dns.setDefaultResultOrder("ipv4first");
-
-import nodemailer from "nodemailer";
 import { google } from "googleapis";
-import SMTPTransport from "nodemailer/lib/smtp-transport";
 
 const OAuth2 = google.auth.OAuth2;
 
-//Gmail API with OAuth2 for secure email 
-const createTransporter = async () => {
-  const oauth2Client = new OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "https://developers.google.com/oauthplayground"
-  );
+// 1. Initialize the OAuth2 Client natively
+const oauth2Client = new OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  "https://developers.google.com/oauthplayground"
+);
 
-  oauth2Client.setCredentials({
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-  });
+oauth2Client.setCredentials({
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+});
 
-  try {
-    // Generate the access token
-    const accessToken = await new Promise((resolve, reject) => {
-      oauth2Client.getAccessToken((err, token) => {
-        if (err) {
-          reject("Failed to create access token :(");
-        }
-        resolve(token);
-      });
-    });
+// 2. Initialize the Gmail API
+const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      family: 4,
-      auth: {
-        type: "OAuth2",
-        user: process.env.GOOGLE_USER_EMAIL!,      
-        clientId: process.env.GOOGLE_CLIENT_ID!,   
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!, 
-        refreshToken: process.env.GOOGLE_REFRESH_TOKEN!, 
-        accessToken: accessToken as string,
-      },
-    } as SMTPTransport.Options);
+/**
+ * Helper function to create a Base64URL-encoded MIME email message.
+ * The Gmail API requires this exact format to send via HTTP POST.
+ */
+const createEncodedMessage = (to: string, subject: string, htmlContent: string) => {
+  const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+  const messageParts = [
+    `From: Novus Wallet <${process.env.GOOGLE_USER_EMAIL}>`,
+    `To: ${to}`,
+    `Content-Type: text/html; charset=utf-8`,
+    `MIME-Version: 1.0`,
+    `Subject: ${utf8Subject}`,
+    '', // Empty line separates headers from body
+    htmlContent,
+  ];
+  
+  const message = messageParts.join('\n');
 
-    return transporter;
-  } catch (error) {
-    console.error("Error creating transporter:", error);
-    throw error;
-  }
+  // Convert to Base64URL format
+  return Buffer.from(message)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 };
 
-// 
+
+// Specialized function for sending OTPs (Registration & Forgot Password)
 export const sendOtpMail = async (to: string, subject: string, title: string, description: string, otpCode: string) => {
   try {
-    const transporter = await createTransporter();
     const htmlContent = `
       <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #F6F9FC; border-radius: 16px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -76,20 +66,22 @@ export const sendOtpMail = async (to: string, subject: string, title: string, de
       </div>
     `;
     
-    const mailOptions = {
-      from: `Novus Wallet <${process.env.GOOGLE_USER_EMAIL}>`,
-      to: to,
-      subject: subject,
-      html: htmlContent,
-    };
+    const encodedMessage = createEncodedMessage(to, subject, htmlContent);
 
-    const result = await transporter.sendMail(mailOptions);
+    // Send via HTTP API (Bypasses Render's SMTP Firewall)
+    const result = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: { raw: encodedMessage },
+    });
+
+    console.log(`[Email Sent] OTP sent to ${to}`);
     return result;
   } catch (error) {
     console.error(`Failed to send email to ${to}:`, error);
     throw new Error("Failed to send email");
   }
 };
+
 
 // Specialized function for sending claim emails with a unique token
 export const sendClaimEmail = async (
@@ -101,14 +93,7 @@ export const sendClaimEmail = async (
   const formattedAmount = (amount / 100).toFixed(2);
 
   try {
-    // Get the dynamic transporter
-    const transporter = await createTransporter();
-
-    const mailOptions = {
-      from: `"Novus Wallet" <${process.env.GOOGLE_USER_EMAIL}>`,
-      to: recipientEmail,
-      subject: `You received $${formattedAmount} on Novus.`,
-      html: `
+    const htmlContent = `
         <div style="background-color: #030712; padding: 40px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff;">
           <div style="max-width: 500px; margin: 0 auto; background-color: #0a0f1c; border: 1px solid #1e293b; border-radius: 20px; padding: 40px; text-align: center;">
             <h1 style="font-size: 24px; font-weight: 900; letter-spacing: -1px; margin: 0 0 40px 0;">
@@ -136,11 +121,18 @@ export const sendClaimEmail = async (
             </div>
           </div>
         </div>
-      `,
-    };
+      `;
 
-    await transporter.sendMail(mailOptions);
-    console.log(`[Email Sent] Claim link sent to ${recipientEmail} via Gmail API`);
+    const subject = `You received $${formattedAmount} on Novus.`;
+    const encodedMessage = createEncodedMessage(recipientEmail, subject, htmlContent);
+
+    // Send via HTTP API
+    await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: { raw: encodedMessage },
+    });
+
+    console.log(`[Email Sent] Claim link sent to ${recipientEmail}`);
   } catch (error) {
     console.error("Failed to send claim email via Gmail API:", error);
   }
