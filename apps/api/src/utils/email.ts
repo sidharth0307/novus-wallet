@@ -1,3 +1,6 @@
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
+
 import nodemailer from "nodemailer";
 import { google } from "googleapis";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
@@ -29,15 +32,15 @@ const createTransporter = async () => {
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
+      port: 587,
+      secure: false,
       family: 4,
       auth: {
         type: "OAuth2",
-        user: process.env.GOOGLE_USER_EMAIL!,      // Notice the '!'
-        clientId: process.env.GOOGLE_CLIENT_ID!,   // Notice the '!'
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!, // Notice the '!'
-        refreshToken: process.env.GOOGLE_REFRESH_TOKEN!, // Notice the '!'
+        user: process.env.GOOGLE_USER_EMAIL!,      
+        clientId: process.env.GOOGLE_CLIENT_ID!,   
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!, 
+        refreshToken: process.env.GOOGLE_REFRESH_TOKEN!, 
         accessToken: accessToken as string,
       },
     } as SMTPTransport.Options);
